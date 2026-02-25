@@ -824,6 +824,10 @@
         <div id="sleepBannerStatus" style="display:none;margin-top:14px;padding:9px 18px;background:rgba(255,225,53,0.06);border:1px solid rgba(255,225,53,0.2);border-radius:10px;font-size:0.75rem;color:var(--banana);letter-spacing:1px;">
           😴 Sleep mode active — AI resumes at <strong>5:20 AM CST</strong>
         </div>
+        <div id="noIpBannerStatus" style="display:none;margin-top:14px;padding:16px 24px;background:rgba(255,59,59,0.06);border:1px solid rgba(255,59,59,0.2);border-radius:12px;text-align:center;">
+          <div style="font-size:2.5rem;margin-bottom:8px">🔌</div>
+          <div style="font-family:'Boogaloo',cursive;font-size:1.1rem;color:#FF7070;letter-spacing:1px;">BananaAI Is Temporarily Down Until We Get A Public IP.</div>
+        </div>
       </div>
 
       <div class="content-wrap">
@@ -984,6 +988,10 @@
     <div class="page" id="page-chat">
       <div class="chat-sleep-bar" id="chatSleepBar">
         😴 BananaAI is in Sleep Mode — resumes at <strong>5:20 AM CST</strong>
+      </div>
+      <div id="noIpBannerChat" style="display:none;flex-shrink:0;padding:28px 20px;text-align:center;border-bottom:1px solid rgba(255,59,59,0.15);">
+        <div style="font-size:3rem;margin-bottom:10px">🔌</div>
+        <div style="font-family:'Boogaloo',cursive;font-size:1.2rem;color:#FF7070;letter-spacing:1px;">BananaAI Is Temporarily Down Until We Get A Public IP.</div>
       </div>
       <div class="messages" id="chatMessages">
         <div class="welcome-chat" id="chatWelcome">
@@ -1294,7 +1302,7 @@ script.end</pre>
               <p>Some legacy versions are available in the archive. Certain very old versions may be locked if marked non-functional.</p>
             </div>
             <div class="dl-actions">
-              <a class="dl-btn secondary" href="https://www.bpe.com/bpe/archive">Browse Archive →</a>
+              <a class="dl-btn secondary" href="https://bananaprojecteditor.github.io/bpe/archive">Browse Archive →</a>
             </div>
           </div>
         </div>
@@ -1377,6 +1385,7 @@ script.end</pre>
 
     // Chat page
     document.getElementById('chatSleepBar').style.display = sleeping ? 'block' : 'none';
+    const noIpChatEl = document.getElementById('noIpBannerChat'); if (noIpChatEl && sleeping) noIpChatEl.style.display = 'none';
     const ci = document.getElementById('chatInput');
     const sb = document.getElementById('sendBtn');
     if (ci) { ci.disabled = sleeping; ci.placeholder = sleeping ? '😴 BananaAI is sleeping... back at 5:20 AM CST' : 'Ask BananaAI about BCode or BPE...'; }
@@ -1525,6 +1534,8 @@ script.end</pre>
 
     const sleepBannerEl = document.getElementById('sleepBannerStatus');
     if (sleepBannerEl) sleepBannerEl.style.display = sleeping ? 'block' : 'none';
+    const noIpEl = document.getElementById('noIpBannerStatus');
+    if (noIpEl) noIpEl.style.display = (!sleeping && !serverOnline) ? 'block' : 'none';
 
     const uptimeValEl = document.getElementById('uptimeVal');
     const uptimeSubEl = document.getElementById('uptimeSub');
