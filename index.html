@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🍌 Banana Project Editor</title>
+  <meta name="description" content="Banana Project Editor — a game development IDE with BCode scripting, BananaAI assistant, and more."/>
+  <link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    /* ═══════════════════════════════════════
+       ROOT & RESET
+    ═══════════════════════════════════════ */
+    :root {
+      --banana: #FFE135;
+      --banana-dark: #F5C400;
+      --banana-deep: #C49A00;
+      --black: #111111;
+      --dark: #161616;
+      --card: #1A1A1A;
+      --card-border: #2A2A2A;
+      --sidebar-bg: #141414;
+      --text: #DDDDDD;
+      --muted: #666666;
+      --green: #39FF14;
+      --red: #FF3B3B;
+      --orange: #FF9500;
+      --code-bg: #0D0D0D;
+      --sidebar-w: 240px;
+      --nav-h: 52px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--black);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(-45deg, transparent, transparent 60px, rgba(255,225,53,0.018) 60px, rgba(255,225,53,0.018) 62px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ═══════════════════════════════════════
+       TOP NAV
+    ═══════════════════════════════════════ */
+    .topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      z-index: 200;
+      background: rgba(17,17,17,0.97);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+    }
+
+    .hamburger {
+      width: 36px; height: 36px;
+      background: none;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex-shrink: 0;
+      transition: border-color 0.2s;
+    }
+    .hamburger:hover { border-color: var(--banana); }
+    .hamburger span {
+      display: block;
+      width: 16px; height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: background 0.2s;
+    }
+    .hamburger:hover span { background: var(--banana); }
+
+    .nav-logo {
+      font-family: 'Boogaloo', cursive;
+      font-size: 1.4rem;
+      color: var(--banana);
+      text-decoration: none;
+      text-shadow: 2px 2px 0 var(--banana-deep);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .nav-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-page-title {
+      font-family: 'Boogaloo', cursive;
+      font-size: 1rem;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .token-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: rgba(255,225,53,0.08);
+      border: 1px solid rgba(255,225,53,0.2);
+      border-radius: 999px;
+      font-size: 0.68rem;
+      color: var(--banana);
+      letter-spacing: 1px;
+    }
+
+    .sleep-pill {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: rgba(255,225,53,0.05);
+      border: 1px solid rgba(255,225,53,0.15);
+      border-radius: 999px;
+      font-size: 0.68rem;
+      color: var(--banana);
+      letter-spacing: 1px;
+    }
+
+    /* ═══════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════ */
+    .layout {
+      display: flex;
+      height: calc(100vh - var(--nav-h));
+      margin-top: var(--nav-h);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ═══════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════ */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--card-border);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 16px 0 40px;
+      transition: transform 0.3s ease, width 0.3s ease;
+    }
+
+    .sidebar.collapsed {
+      width: 0;
+      padding: 0;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 3px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--card-border); }
+
+    .sidebar-group {
+      margin-bottom: 20px;
+    }
+
+    .sidebar-group-label {
+      font-size: 0.58rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 16px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .sidebar-item:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .sidebar-item.active {
+      color: var(--banana);
+      border-left-color: var(--banana);
+      background: rgba(255,225,53,0.05);
+    }
+
+    .sidebar-item .si-icon { font-size: 0.9rem; flex-shrink: 0; }
+
+    .sidebar-sub {
+      padding-left: 40px;
+      font-size: 0.7rem;
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background: var(--card-border);
+      margin: 10px 16px;
+    }
+
+    /* ═══════════════════════════════════════
+       MAIN CONTENT AREA
+    ═══════════════════════════════════════ */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .main::-webkit-scrollbar { width: 4px; }
+    .main::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 2px; }
+
+    /* PAGE SECTIONS */
+    .page {
+      display: none;
+      min-height: 100%;
+      animation: fadeIn 0.3s ease both;
+    }
+
+    .page.active { display: block; }
+
+    /* ═══════════════════════════════════════
+       SHARED COMPONENTS
+    ═══════════════════════════════════════ */
+    .page-hero {
+      text-align: center;
+      padding: 64px 24px 48px;
+    }
+
+    .hero-icon {
+      font-size: 3.8rem;
+      display: block;
+      margin-bottom: 12px;
+      animation: wobble 3s ease-in-out infinite;
+    }
+
+    .page-hero h1 {
+      font-family: 'Boogaloo', cursive;
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      color: var(--banana);
+      text-shadow: 4px 4px 0 var(--banana-deep);
+      margin-bottom: 8px;
+      line-height: 1;
+    }
+
+    .hero-sub {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 18px;
+      background: rgba(255,225,53,0.08);
+      border: 1px solid rgba(255,225,53,0.2);
+      border-radius: 999px;
+      font-size: 0.7rem;
+      color: var(--banana);
+      letter-spacing: 1px;
+    }
+
+    .content-wrap {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    .section-title {
+      font-family: 'Boogaloo', cursive;
+      font-size: 1.2rem;
+      color: var(--banana);
+      letter-spacing: 2px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    /* cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+
+    .card:hover { border-color: rgba(255,225,53,0.3); transform: translateY(-2px); }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--banana);
+    }
+
+    .card-label { font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .card-value { font-family: 'Boogaloo', cursive; font-size: 2rem; color: var(--banana); line-height: 1; margin-bottom: 4px; }
+    .card-sub { font-size: 0.7rem; color: var(--muted); }
+    .card-icon { position: absolute; top: 16px; right: 16px; font-size: 1.4rem; opacity: 0.4; }
+
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 28px; }
+
+    /* info boxes */
+    .info-box {
+      background: rgba(255,225,53,0.05);
+      border: 1px solid rgba(255,225,53,0.2);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-size: 0.78rem;
+      line-height: 1.8;
+      color: var(--banana);
+    }
+
+    .danger-box {
+      background: rgba(255,59,59,0.05);
+      border: 1px solid rgba(255,59,59,0.2);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-size: 0.78rem;
+      line-height: 1.8;
+      color: #FF7070;
+    }
+
+    /* prose */
+    .prose h2 {
+      font-family: 'Boogaloo', cursive;
+      font-size: 1.3rem;
+      color: var(--banana);
+      margin: 28px 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .prose h3 { font-size: 0.85rem; color: var(--text); margin: 18px 0 8px; letter-spacing: 1px; }
+    .prose p { font-size: 0.8rem; line-height: 1.9; color: var(--text); margin-bottom: 12px; }
+    .prose ul, .prose ol { padding-left: 20px; margin-bottom: 12px; }
+    .prose li { font-size: 0.8rem; line-height: 1.9; color: var(--text); margin-bottom: 3px; }
+    .prose li::marker { color: var(--banana); }
+    .prose a { color: var(--banana); text-decoration: none; border-bottom: 1px solid rgba(255,225,53,0.3); }
+    .prose a:hover { border-bottom-color: var(--banana); }
+
+    /* tables */
+    .table-wrap { overflow-x: auto; margin: 14px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+    th { background: var(--code-bg); color: var(--banana); padding: 9px 13px; text-align: left; border: 1px solid var(--card-border); font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; }
+    td { padding: 9px 13px; border: 1px solid var(--card-border); color: var(--text); vertical-align: top; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* code */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-left: 3px solid var(--banana);
+      border-radius: 10px;
+      padding: 18px;
+      margin: 14px 0;
+      overflow-x: auto;
+      font-size: 0.78rem;
+      line-height: 1.7;
+      color: var(--banana);
+    }
+    code {
+      background: var(--code-bg);
+      border: 1px solid #2A2A2A;
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.76rem;
+      color: var(--banana);
+    }
+    pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+    /* status badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 10px 22px;
+      border-radius: 999px;
+      font-family: 'Boogaloo', cursive;
+      font-size: 1.15rem;
+      letter-spacing: 1px;
+      border: 2px solid;
+      transition: all 0.4s ease;
+    }
+    .status-badge.online  { background: rgba(57,255,20,0.1);  border-color: var(--green);  color: var(--green);  }
+    .status-badge.offline { background: rgba(255,59,59,0.1);  border-color: var(--red);    color: var(--red);    }
+    .status-badge.checking{ background: rgba(255,149,0,0.1);  border-color: var(--orange); color: var(--orange); }
+    .status-badge.sleeping{ background: rgba(255,225,53,0.08); border-color: var(--banana); color: var(--banana); }
+
+    .pulse-dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+    .status-badge.online .pulse-dot  { animation: pulse-green  1.5s ease-in-out infinite; }
+    .status-badge.sleeping .pulse-dot{ animation: pulse-banana 2s   ease-in-out infinite; }
+
+    /* uptime bars */
+    .history-bars { display: flex; gap: 3px; align-items: flex-end; height: 52px; margin-bottom: 8px; }
+    .history-bar { flex: 1; border-radius: 3px 3px 0 0; min-height: 8px; cursor: pointer; transition: opacity 0.2s; }
+    .history-bar:hover { opacity: 0.7; }
+    .history-bar.up       { background: var(--green); }
+    .history-bar.down     { background: var(--red); }
+    .history-bar.sleeping { background: var(--banana); opacity: 0.45; }
+    .history-bar.unknown  { background: var(--card-border); }
+    .history-labels { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--muted); }
+
+    /* endpoint rows */
+    .endpoint-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-radius: 10px; margin-bottom: 7px; background: var(--card); border: 1px solid var(--card-border); transition: border-color 0.2s; }
+    .endpoint-row:hover { border-color: #444; }
+    .ep-method { font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 5px; letter-spacing: 1px; }
+    .ep-method.get { background: rgba(57,255,20,0.1); color: var(--green); border: 1px solid rgba(57,255,20,0.25); }
+    .ep-method.post{ background: rgba(255,225,53,0.1); color: var(--banana); border: 1px solid rgba(255,225,53,0.25); }
+    .ep-path { font-size: 0.78rem; margin-left: 10px; }
+    .ep-status { font-size: 0.65rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; letter-spacing: 1px; }
+    .ep-status.ok    { background: rgba(57,255,20,0.1);  color: var(--green); }
+    .ep-status.error { background: rgba(255,59,59,0.1);  color: var(--red);   }
+    .ep-latency { font-size: 0.68rem; color: var(--muted); margin-right: 10px; }
+
+    /* incident log */
+    .incident-item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--card-border); }
+    .incident-item:last-child { border-bottom: none; }
+    .inc-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .inc-dot.green  { background: var(--green); }
+    .inc-dot.red    { background: var(--red); }
+    .inc-dot.orange { background: var(--orange); }
+    .inc-dot.banana { background: var(--banana); }
+    .incident-title { font-size: 0.78rem; color: var(--text); margin-bottom: 2px; }
+    .incident-time  { font-size: 0.65rem; color: var(--muted); }
+
+    /* refresh btn */
+    .refresh-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 24px;
+      background: var(--banana); color: var(--black);
+      border: none; border-radius: 999px;
+      font-family: 'Boogaloo', cursive; font-size: 1rem; letter-spacing: 1px;
+      cursor: pointer;
+      transition: transform 0.15s, background 0.2s;
+      box-shadow: 0 4px 0 var(--banana-deep);
+    }
+    .refresh-btn:hover { background: var(--banana-dark); transform: translateY(-2px); }
+    .refresh-btn:active { transform: translateY(2px); box-shadow: none; }
+    .refresh-btn.spinning .spin-icon { animation: spin 0.7s linear infinite; }
+    .spin-icon { display: inline-block; }
+    .countdown { display: block; text-align: center; font-size: 0.65rem; color: var(--muted); margin-top: 8px; letter-spacing: 1px; }
+    .last-checked { display: block; text-align: center; font-size: 0.65rem; color: var(--muted); margin-top: 6px; letter-spacing: 1px; }
+
+    /* sleep banner */
+    .sleep-banner-bar {
+      display: none;
+      background: rgba(255,225,53,0.05);
+      border-bottom: 1px solid rgba(255,225,53,0.15);
+      padding: 9px 20px;
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--banana);
+      letter-spacing: 1px;
+    }
+
+    /* ═══════════════════════════════════════
+       TOS PAGE
+    ═══════════════════════════════════════ */
+    .toc-box {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-left: 3px solid var(--banana);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 32px;
+    }
+    .toc-box-title { font-family: 'Boogaloo', cursive; font-size: 1rem; color: var(--banana); margin-bottom: 12px; }
+    .toc-box ol { padding-left: 18px; }
+    .toc-box li { margin-bottom: 5px; }
+    .toc-box a { color: var(--muted); text-decoration: none; font-size: 0.75rem; transition: color 0.2s; }
+    .toc-box a:hover { color: var(--banana); }
+
+    .tos-section { margin-bottom: 36px; }
+    .tos-section h2 {
+      font-family: 'Boogaloo', cursive; font-size: 1.3rem; color: var(--banana);
+      margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--card-border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; background: var(--banana); color: var(--black);
+      border-radius: 50%; font-size: 0.85rem; font-weight: 700; flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════
+       CHAT PAGE
+    ═══════════════════════════════════════ */
+    #page-chat {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+    #page-chat.active { display: flex; }
+
+    .chat-sleep-bar {
+      display: none;
+      background: rgba(255,225,53,0.05);
+      border-bottom: 1px solid rgba(255,225,53,0.15);
+      padding: 9px 20px;
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--banana);
+      flex-shrink: 0;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 2px; }
+
+    .welcome-chat { text-align: center; padding: 40px 20px; }
+    .welcome-chat .wc-icon { font-size: 3rem; display: block; margin-bottom: 10px; animation: wobble 3s ease-in-out infinite; }
+    .welcome-chat h2 { font-family: 'Boogaloo', cursive; font-size: 1.8rem; color: var(--banana); text-shadow: 3px 3px 0 var(--banana-deep); margin-bottom: 8px; }
+    .welcome-chat p { color: var(--muted); font-size: 0.72rem; line-height: 1.8; max-width: 380px; margin: 0 auto 18px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
+    .chip { padding: 7px 13px; background: var(--card); border: 1px solid var(--card-border); border-radius: 999px; font-size: 0.7rem; color: var(--text); cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+    .chip:hover { border-color: var(--banana); color: var(--banana); }
+
+    .msg { display: flex; gap: 9px; max-width: 680px; animation: fadeUp 0.25s ease both; }
+    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg.ai   { align-self: flex-start; }
+    .msg-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; margin-top: 2px; }
+    .msg.user .msg-avatar { background: var(--banana); color: var(--black); }
+    .msg.ai   .msg-avatar { background: var(--card); border: 1px solid var(--card-border); }
+    .msg-body { max-width: calc(100% - 39px); }
+    .msg-bubble { padding: 10px 14px; border-radius: 13px; font-size: 0.78rem; line-height: 1.8; white-space: pre-wrap; word-break: break-word; }
+    .msg.user .msg-bubble { background: #2A2A1A; border: 1px solid rgba(255,225,53,0.15); border-bottom-right-radius: 4px; }
+    .msg.ai   .msg-bubble { background: var(--card); border: 1px solid var(--card-border); border-bottom-left-radius: 4px; }
+    .msg-meta { font-size: 0.6rem; color: var(--muted); margin-top: 3px; padding: 0 3px; }
+    .msg.user .msg-meta { text-align: right; }
+    .msg-bubble code { background: #0A0A0A; border: 1px solid #333; border-radius: 5px; padding: 2px 5px; font-size: 0.74rem; color: var(--banana); }
+    .msg-bubble pre { background: #0A0A0A; border: 1px solid #333; border-radius: 8px; padding: 10px; margin: 7px 0; overflow-x: auto; font-size: 0.74rem; color: var(--banana); }
+
+    .typing-wrap { display: flex; gap: 9px; align-self: flex-start; }
+    .typing-indicator { display: flex; align-items: center; gap: 5px; padding: 10px 14px; background: var(--card); border: 1px solid var(--card-border); border-radius: 13px; border-bottom-left-radius: 4px; }
+    .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--banana); animation: typingBounce 1.2s ease-in-out infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    .chat-input-area {
+      flex-shrink: 0;
+      padding: 10px 14px 14px;
+      background: rgba(17,17,17,0.9);
+      border-top: 1px solid var(--card-border);
+    }
+    .input-wrap {
+      display: flex; gap: 9px; align-items: flex-end;
+      max-width: 680px; margin: 0 auto;
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 13px; padding: 9px 11px;
+      transition: border-color 0.2s;
+    }
+    .input-wrap:focus-within { border-color: rgba(255,225,53,0.35); }
+    #chatInput {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); font-family: 'Space Mono', monospace;
+      font-size: 0.78rem; resize: none; max-height: 110px; line-height: 1.6;
+    }
+    #chatInput::placeholder { color: var(--muted); }
+    #sendBtn {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: var(--banana); color: var(--black);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+      flex-shrink: 0;
+      transition: transform 0.15s, background 0.2s;
+      box-shadow: 0 3px 0 var(--banana-deep);
+    }
+    #sendBtn:hover { background: var(--banana-dark); transform: translateY(-1px); }
+    #sendBtn:active { transform: translateY(2px); box-shadow: none; }
+    #sendBtn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .input-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      max-width: 680px; margin: 5px auto 0; padding: 0 3px;
+    }
+    .input-hint { font-size: 0.6rem; color: var(--muted); letter-spacing: 1px; }
+    .token-bar-wrap { display: flex; align-items: center; gap: 7px; }
+    .token-bar-label { font-size: 0.6rem; color: var(--muted); }
+    .token-bar-track { width: 72px; height: 4px; background: var(--card-border); border-radius: 999px; overflow: hidden; }
+    .token-bar-fill { height: 100%; background: linear-gradient(90deg, var(--banana-deep), var(--banana)); border-radius: 999px; transition: width 0.5s ease; }
+
+    /* ═══════════════════════════════════════
+       DOCS PAGE
+    ═══════════════════════════════════════ */
+    #page-docs {
+      display: none;
+      flex-direction: row;
+      height: 100%;
+    }
+    #page-docs.active { display: flex; }
+
+    .docs-sidebar {
+      width: 200px;
+      flex-shrink: 0;
+      background: #131313;
+      border-right: 1px solid var(--card-border);
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+    .docs-sidebar::-webkit-scrollbar { width: 3px; }
+    .docs-sidebar::-webkit-scrollbar-thumb { background: var(--card-border); }
+    .docs-group-label { font-size: 0.56rem; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); padding: 0 14px; margin: 14px 0 6px; }
+    .docs-link { display: block; padding: 7px 14px; font-size: 0.72rem; color: var(--muted); cursor: pointer; border-left: 2px solid transparent; transition: color 0.15s, background 0.15s, border-color 0.15s; white-space: nowrap; }
+    .docs-link:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .docs-link.active { color: var(--banana); border-left-color: var(--banana); background: rgba(255,225,53,0.04); }
+
+    .docs-content {
+      flex: 1; overflow-y: auto; padding: 36px 44px;
+    }
+    .docs-content::-webkit-scrollbar { width: 4px; }
+    .docs-content::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 2px; }
+
+    .doc-page { display: none; max-width: 720px; animation: fadeIn 0.25s ease both; }
+    .doc-page.active { display: block; }
+    .doc-page h1 { font-family: 'Boogaloo', cursive; font-size: 2.2rem; color: var(--banana); text-shadow: 3px 3px 0 var(--banana-deep); margin-bottom: 6px; }
+    .doc-subtitle { color: var(--muted); font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 28px; padding-bottom: 14px; border-bottom: 1px solid var(--card-border); }
+    .doc-page h2 { font-family: 'Boogaloo', cursive; font-size: 1.3rem; color: var(--banana); margin: 28px 0 10px; display: flex; align-items: center; gap: 7px; }
+    .doc-page h3 { font-size: 0.82rem; color: var(--text); margin: 16px 0 7px; letter-spacing: 1px; }
+    .doc-page p { font-size: 0.78rem; line-height: 1.9; color: var(--text); margin-bottom: 12px; }
+    .doc-page ul, .doc-page ol { padding-left: 18px; margin-bottom: 12px; }
+    .doc-page li { font-size: 0.78rem; line-height: 1.9; color: var(--text); margin-bottom: 3px; }
+    .doc-page li::marker { color: var(--banana); }
+
+    /* ═══════════════════════════════════════
+       DOWNLOAD PAGE
+    ═══════════════════════════════════════ */
+    .dl-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 32px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .dl-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--banana-deep), var(--banana)); }
+    .dl-card.featured::before { height: 4px; background: var(--banana); }
+    .dl-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .dl-card h2 { font-family: 'Boogaloo', cursive; font-size: 1.6rem; color: var(--banana); margin-bottom: 6px; }
+    .dl-card p { font-size: 0.78rem; color: var(--muted); line-height: 1.7; max-width: 460px; }
+    .version-tag { display: inline-block; padding: 3px 10px; background: rgba(255,225,53,0.1); border: 1px solid rgba(255,225,53,0.25); border-radius: 999px; font-size: 0.65rem; color: var(--banana); letter-spacing: 1px; margin-bottom: 8px; }
+    .dl-actions { display: flex; flex-direction: column; gap: 9px; align-items: flex-end; flex-shrink: 0; }
+    .dl-btn {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 12px 24px; border-radius: 11px;
+      font-family: 'Boogaloo', cursive; font-size: 1rem; letter-spacing: 1px;
+      text-decoration: none; cursor: pointer;
+      transition: transform 0.15s, opacity 0.2s; border: none; white-space: nowrap;
+    }
+    .dl-btn.primary { background: var(--banana); color: var(--black); box-shadow: 0 4px 0 var(--banana-deep); }
+    .dl-btn.primary:hover { transform: translateY(-2px); }
+    .dl-btn.primary:active { transform: translateY(2px); box-shadow: none; }
+    .dl-btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--card-border); }
+    .dl-btn.secondary:hover { border-color: var(--banana); color: var(--banana); }
+    .dl-size { font-size: 0.62rem; color: var(--muted); letter-spacing: 1px; text-align: right; }
+
+    .steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .step { display: flex; gap: 14px; align-items: flex-start; padding: 14px 18px; background: var(--card); border: 1px solid var(--card-border); border-radius: 11px; transition: border-color 0.2s; }
+    .step:hover { border-color: rgba(255,225,53,0.25); }
+    .step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--banana); color: var(--black); display: flex; align-items: center; justify-content: center; font-family: 'Boogaloo', cursive; font-size: 0.95rem; flex-shrink: 0; }
+    .step h3 { font-size: 0.8rem; color: var(--text); margin-bottom: 3px; }
+    .step p { font-size: 0.72rem; color: var(--muted); line-height: 1.7; margin: 0; }
+
+    .req-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 11px; margin-bottom: 28px; }
+    .req-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 11px; padding: 16px; }
+    .req-icon { font-size: 1.3rem; margin-bottom: 7px; }
+    .req-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
+    .req-val { font-size: 0.78rem; color: var(--text); }
+
+    /* ═══════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════ */
+    .page-footer {
+      text-align: center;
+      padding: 28px 24px;
+      border-top: 1px solid var(--card-border);
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+    .page-footer span { color: var(--banana); }
+    .footer-links { display: flex; justify-content: center; gap: 20px; margin-top: 10px; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.62rem; letter-spacing: 2px; text-transform: uppercase; transition: color 0.2s; cursor: pointer; }
+    .footer-links a:hover { color: var(--banana); }
+
+    /* ═══════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════ */
+    @keyframes fadeIn  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeUp  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes wobble  { 0%,100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+    @keyframes spin    { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes pulse-green  { 0%,100% { box-shadow: 0 0 0 0 rgba(57,255,20,0.6); } 50% { box-shadow: 0 0 0 6px rgba(57,255,20,0); } }
+    @keyframes pulse-banana { 0%,100% { box-shadow: 0 0 0 0 rgba(255,225,53,0.5); opacity:1; } 50% { box-shadow: 0 0 0 6px rgba(255,225,53,0); opacity:0.6; } }
+    @keyframes typingBounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ TOP NAV ═══════════════════════════════ -->
+<nav class="topnav">
+  <button class="hamburger" onclick="toggleSidebar()" title="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="nav-logo" onclick="navigate('status')">🍌 BPE</span>
+  <div class="nav-center">
+    <span class="nav-page-title" id="navPageTitle">Status</span>
+  </div>
+  <div class="nav-right">
+    <div class="token-pill" id="tokenPill" style="display:none">
+      🎫 <span id="tokenDisplay">1,000</span>
+    </div>
+    <div class="sleep-pill" id="sleepPill">
+      😴 <span id="sleepPillText">Sleeping</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════ LAYOUT ═══════════════════════════════ -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">🍌 BananaAI</div>
+      <div class="sidebar-item active" id="nav-status" onclick="navigate('status')">
+        <span class="si-icon">📡</span> Status
+      </div>
+      <div class="sidebar-item" id="nav-chat" onclick="navigate('chat')">
+        <span class="si-icon">💬</span> Web Chat
+      </div>
+      <div class="sidebar-item" id="nav-tos" onclick="navigate('tos')">
+        <span class="si-icon">📋</span> Terms of Service
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">🖥️ Editor</div>
+      <div class="sidebar-item" id="nav-docs" onclick="navigate('docs')">
+        <span class="si-icon">📖</span> Documentation
+      </div>
+      <div class="sidebar-item" id="nav-download" onclick="navigate('download')">
+        <span class="si-icon">📥</span> Download
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">🔗 Links</div>
+      <div class="sidebar-item" onclick="window.open('https://github.com/Banana-Toast-GH/BananaProjectEditor','_blank')">
+        <span class="si-icon">🐙</span> GitHub
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main" id="main">
+
+    <!-- ══════════════ STATUS PAGE ══════════════ -->
+    <div class="page active" id="page-status">
+      <div class="page-hero">
+        <span class="hero-icon">📡</span>
+        <h1>BananaAI Status</h1>
+        <p class="hero-sub">Real-time server health</p>
+        <div id="mainBadge" class="status-badge checking">
+          <span class="pulse-dot"></span>
+          <span id="mainBadgeText">Checking...</span>
+        </div>
+        <span class="last-checked" id="lastChecked">Last checked: —</span>
+        <div id="sleepBannerStatus" style="display:none;margin-top:14px;padding:9px 18px;background:rgba(255,225,53,0.06);border:1px solid rgba(255,225,53,0.2);border-radius:10px;font-size:0.75rem;color:var(--banana);letter-spacing:1px;">
+          😴 Sleep mode active — AI resumes at <strong>5:20 AM CST</strong>
+        </div>
+      </div>
+
+      <div class="content-wrap">
+        <div style="text-align:center;margin-bottom:24px">
+          <button class="refresh-btn" id="refreshBtn" onclick="refresh()">
+            <span class="spin-icon" id="spinIcon">⟳</span> Refresh Now
+          </button>
+          <span class="countdown" id="countdown">Auto-refresh in 30s</span>
+        </div>
+
+        <div class="cards-grid">
+          <div class="card">
+            <span class="card-icon">⏱️</span>
+            <div class="card-label">Server Uptime</div>
+            <div class="card-value" id="uptimeVal">—</div>
+            <div class="card-sub" id="uptimeSub">Waiting...</div>
+          </div>
+          <div class="card">
+            <span class="card-icon">🏓</span>
+            <div class="card-label">Response Time</div>
+            <div class="card-value" id="pingVal">—</div>
+            <div class="card-sub">Health endpoint</div>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-bottom:14px">📅 Uptime History — Last 30 checks</div>
+        <div class="history-bars" id="historyBars"></div>
+        <div class="history-labels">
+          <span>30 checks ago</span>
+          <span id="uptimePct">—% uptime</span>
+          <span>Now</span>
+        </div>
+
+        <div class="section-title" style="margin:28px 0 14px">🔌 Endpoint Health</div>
+        <div id="endpointsList"></div>
+
+        <div class="section-title" style="margin:28px 0 14px">📋 Incident Log</div>
+        <div id="incidentLog">
+          <div class="incident-item">
+            <div class="inc-dot orange" style="margin-top:5px"></div>
+            <div><div class="incident-title">Awaiting first check...</div><div class="incident-time">—</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-footer">
+        <span>🍌 BananaAI</span> &nbsp;·&nbsp; Polling <span>10.0.0.244:5000</span>
+        <div class="footer-links">
+          <a onclick="navigate('chat')">Web Chat</a>
+          <a onclick="navigate('tos')">ToS</a>
+          <a onclick="navigate('docs')">Docs</a>
+          <a onclick="navigate('download')">Download</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ TOS PAGE ══════════════ -->
+    <div class="page" id="page-tos">
+      <div class="page-hero">
+        <span class="hero-icon">📋</span>
+        <h1>Terms of Service</h1>
+        <p class="hero-sub">BananaAI · Banana Project Editor</p>
+        <span class="hero-badge">Effective: February 2026</span>
+      </div>
+
+      <div class="content-wrap">
+        <div class="toc-box">
+          <div class="toc-box-title">📑 Table of Contents</div>
+          <ol>
+            <li><a href="#tos1">Acceptance of Terms</a></li>
+            <li><a href="#tos2">What BananaAI Is</a></li>
+            <li><a href="#tos3">Token System & Plans</a></li>
+            <li><a href="#tos4">Acceptable Use</a></li>
+            <li><a href="#tos5">Prohibited Conduct</a></li>
+            <li><a href="#tos6">Service Availability & Sleep Mode</a></li>
+            <li><a href="#tos7">Data & Privacy</a></li>
+            <li><a href="#tos8">Intellectual Property</a></li>
+            <li><a href="#tos9">Disclaimer of Warranties</a></li>
+            <li><a href="#tos10">Changes to These Terms</a></li>
+          </ol>
+        </div>
+
+        <div class="tos-section prose" id="tos1">
+          <h2><span class="section-num">1</span> Acceptance of Terms</h2>
+          <p>By accessing or using BananaAI — whether through the Banana Project Editor, the web chat, or any other interface — you agree to be bound by these Terms of Service. If you do not agree, do not use BananaAI or any associated services.</p>
+          <div class="info-box">🍌 These terms apply to all BananaAI features including Ask mode, Agent mode, and any future features.</div>
+        </div>
+
+        <div class="tos-section prose" id="tos2">
+          <h2><span class="section-num">2</span> What BananaAI Is</h2>
+          <p>BananaAI is an AI assistant integrated into BPE, designed to help users learn BCode, generate scripts, plan game projects, and interact with BPE's project system through Agent mode. It is powered by locally-hosted AI models and is a supplementary tool — not a substitute for learning or exercising your own judgment.</p>
+          <p>AI responses may occasionally be inaccurate. Always review generated code before using it in your projects.</p>
+        </div>
+
+        <div class="tos-section prose" id="tos3">
+          <h2><span class="section-num">3</span> Token System & Plans</h2>
+          <p>BananaAI uses a token-based usage system calculated from message length, response length, and generation time. Current plans:</p>
+          <ul>
+            <li><strong style="color:var(--banana)">Free</strong> — 5,000 Generative / 2,500 Creation tokens</li>
+            <li><strong style="color:var(--banana)">Prem ($6.99)</strong> — 10,000 Generative / 5,000 Creation tokens</li>
+            <li><strong style="color:var(--banana)">Banana ($11.99)</strong> — 20,000 / 10,000 + Thinking Mode + Weekly renewal</li>
+            <li><strong style="color:var(--banana)">Owner</strong> — Internal use only</li>
+          </ul>
+          <div class="info-box">Tokens reset monthly (weekly for Banana plan). Unused tokens do not roll over and have no monetary value.</div>
+        </div>
+
+        <div class="tos-section prose" id="tos4">
+          <h2><span class="section-num">4</span> Acceptable Use</h2>
+          <p>You may use BananaAI to generate BCode scripts, ask questions about BPE and game development, plan projects, debug code, and use Agent mode to create and edit project files within BPE.</p>
+        </div>
+
+        <div class="tos-section prose" id="tos5">
+          <h2><span class="section-num">5</span> Prohibited Conduct</h2>
+          <div class="danger-box">⚠️ Violation of these rules may result in immediate account suspension without refund.</div>
+          <p>You may NOT: attempt to bypass or exploit the token system, use bots to send API requests, share your credentials, generate harmful or illegal content, reverse-engineer BananaAI for commercial use, or deliberately overload the server.</p>
+        </div>
+
+        <div class="tos-section prose" id="tos6">
+          <h2><span class="section-num">6</span> Service Availability & Sleep Mode</h2>
+          <p>BananaAI is provided on a best-effort basis with no guaranteed uptime. It enters <strong style="color:var(--banana)">Sleep Mode</strong> daily from <strong style="color:var(--banana)">8:30 PM to 5:20 AM CST</strong> — chat requests are not processed during this window. Check <span style="color:var(--banana);cursor:pointer" onclick="navigate('status')">the status page</span> for current availability.</p>
+        </div>
+
+        <div class="tos-section prose" id="tos7">
+          <h2><span class="section-num">7</span> Data & Privacy</h2>
+          <p>BananaAI processes your messages to generate responses. Conversation history is retained in memory for session context only and is not permanently stored. We do not sell your data. User accounts are managed through PlayFab. Do not submit sensitive personal information through BananaAI chat.</p>
+        </div>
+
+        <div class="tos-section prose" id="tos8">
+          <h2><span class="section-num">8</span> Intellectual Property</h2>
+          <p>BPE, BananaAI, BCode, and all associated branding are property of the BPE development team. Code generated for your BPE projects is yours to use freely, but you may not resell or redistribute BananaAI-generated content as a standalone product.</p>
+        </div>
+
+        <div class="tos-section prose" id="tos9">
+          <h2><span class="section-num">9</span> Disclaimer of Warranties</h2>
+          <p>BananaAI is provided "as is" without warranties of any kind. We make no guarantees about the accuracy or fitness of AI-generated content.</p>
+          <div class="danger-box">⚠️ Always review AI-generated BCode before running it. The BPE team is not responsible for data loss or issues caused by acting on AI responses without verification.</div>
+        </div>
+
+        <div class="tos-section prose" id="tos10">
+          <h2><span class="section-num">10</span> Changes to These Terms</h2>
+          <p>We may update these terms at any time. Continued use after changes are posted constitutes acceptance. The effective date above will be updated accordingly.</p>
+          <div class="info-box">🍌 Thanks for using BananaAI. We built it to make learning game development more fun — please use it responsibly!</div>
+        </div>
+      </div>
+
+      <div class="page-footer">
+        <span>🍌 BananaAI</span> &nbsp;·&nbsp; Terms of Service
+        <div class="footer-links">
+          <a onclick="navigate('status')">Status</a>
+          <a onclick="navigate('chat')">Web Chat</a>
+          <a onclick="navigate('docs')">Docs</a>
+          <a onclick="navigate('download')">Download</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ CHAT PAGE ══════════════ -->
+    <div class="page" id="page-chat">
+      <div class="chat-sleep-bar" id="chatSleepBar">
+        😴 BananaAI is in Sleep Mode — resumes at <strong>5:20 AM CST</strong>
+      </div>
+      <div class="messages" id="chatMessages">
+        <div class="welcome-chat" id="chatWelcome">
+          <span class="wc-icon">🍌</span>
+          <h2>Hey! I'm BananaAI</h2>
+          <p>Ask me anything about BCode, game development, or your BPE project. You have <strong style="color:var(--banana)">1,000 tokens</strong> — make 'em count!</p>
+          <div class="chips">
+            <div class="chip" onclick="sendChip(this)">How do I make a clicker game?</div>
+            <div class="chip" onclick="sendChip(this)">What is BCode?</div>
+            <div class="chip" onclick="sendChip(this)">Show me an example script</div>
+            <div class="chip" onclick="sendChip(this)">How do events work in BPE?</div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="input-wrap">
+          <textarea id="chatInput" placeholder="Ask BananaAI about BCode or BPE..." rows="1"></textarea>
+          <button id="sendBtn" onclick="sendMessage()">➤</button>
+        </div>
+        <div class="input-footer">
+          <span class="input-hint">Enter to send · Shift+Enter new line</span>
+          <div class="token-bar-wrap">
+            <span class="token-bar-label" id="tokenBarLabel">1000 / 1000</span>
+            <div class="token-bar-track"><div class="token-bar-fill" id="tokenBarFill"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ DOCS PAGE ══════════════ -->
+    <div class="page" id="page-docs">
+      <aside class="docs-sidebar">
+        <div class="docs-group-label">Getting Started</div>
+        <div class="docs-link active" onclick="showDoc('intro', this)">🍌 Introduction</div>
+        <div class="docs-link" onclick="showDoc('install', this)">📦 Installation</div>
+        <div class="docs-link" onclick="showDoc('interface', this)">🖥️ The Interface</div>
+        <div class="docs-group-label">BCode Language</div>
+        <div class="docs-link" onclick="showDoc('bcode-basics', this)">📝 Basics & Syntax</div>
+        <div class="docs-link" onclick="showDoc('bcode-variables', this)">📦 Variables</div>
+        <div class="docs-link" onclick="showDoc('bcode-events', this)">⚡ Events</div>
+        <div class="docs-link" onclick="showDoc('bcode-api', this)">🔧 Engine API</div>
+        <div class="docs-group-label">BananaAI</div>
+        <div class="docs-link" onclick="showDoc('ai-overview', this)">🤖 Overview</div>
+        <div class="docs-link" onclick="showDoc('ai-modes', this)">🎛️ Modes & Tokens</div>
+        <div class="docs-link" onclick="showDoc('ai-commands', this)">⚙️ Agent Commands</div>
+      </aside>
+      <div class="docs-content">
+
+        <div class="doc-page active" id="doc-intro">
+          <h1>🍌 Welcome to BPE</h1>
+          <p class="doc-subtitle">Banana Project Editor — Documentation</p>
+          <p>The <strong style="color:var(--banana)">Banana Project Editor (BPE)</strong> is a game development IDE built for learners making the jump from visual block coding to real text-based programming. It combines drag-and-drop familiarity with a powerful custom scripting language called <strong style="color:var(--banana)">BCode</strong>.</p>
+          <p>BPE is built in Java. BCode transpiles to Lua at runtime, making it fast, flexible, and learner-friendly.</p>
+          <h2>✨ Key Features</h2>
+          <ul>
+            <li>Event-driven programming model</li>
+            <li>Object Editor with Properties, Code, Costumes, and Sounds tabs</li>
+            <li>Visual/block and text hybrid editing modes</li>
+            <li>Built-in BananaAI assistant</li>
+            <li>BCode → Lua transpiler built into the engine</li>
+          </ul>
+          <div class="info-box">🍌 New to BPE? Start with <strong>Installation</strong>, then jump into <strong>BCode Basics</strong>.</div>
+        </div>
+
+        <div class="doc-page" id="doc-install">
+          <h1>📦 Installation</h1>
+          <p class="doc-subtitle">Getting BPE up and running</p>
+          <h2>⚙️ Requirements</h2>
+          <ul>
+            <li>Java JDK 11 or higher</li>
+            <li>Windows OS (primary supported platform)</li>
+            <li>512MB free RAM minimum</li>
+          </ul>
+          <h2>📥 Download & Build</h2>
+          <p>Download the latest release from the <span style="color:var(--banana);cursor:pointer" onclick="navigate('download')">Downloads page</span>. Place <code>BananaProjectEditor.zip</code> and <code>BuildBPE.bat</code> in the same folder, then run:</p>
+          <pre>BuildBPE.bat</pre>
+          <p>This extracts BPE to <code>C:\BPE\</code> and builds it automatically.</p>
+          <h2>▶️ Running BPE</h2>
+          <pre>java -jar C:\BPE\BananaProjectEditor\BananaProjectEditor.jar</pre>
+          <div class="info-box">💡 If Java isn't found, download it from java.com and make sure it's added to your PATH.</div>
+        </div>
+
+        <div class="doc-page" id="doc-interface">
+          <h1>🖥️ The Interface</h1>
+          <p class="doc-subtitle">Getting familiar with BPE's layout</p>
+          <h2>🗂️ Object Editor</h2>
+          <p>Every game object has four tabs:</p>
+          <div class="table-wrap">
+            <table>
+              <tr><th>Tab</th><th>What it does</th></tr>
+              <tr><td><strong style="color:var(--banana)">Properties</strong></td><td>Set name, position, size, visibility, and other base attributes.</td></tr>
+              <tr><td><strong style="color:var(--banana)">Code</strong></td><td>Write BCode scripts for the object's behavior.</td></tr>
+              <tr><td><strong style="color:var(--banana)">Costumes</strong></td><td>Manage sprites and visual assets.</td></tr>
+              <tr><td><strong style="color:var(--banana)">Sounds</strong></td><td>Attach and manage audio files.</td></tr>
+            </table>
+          </div>
+          <h2>🎮 Editing Modes</h2>
+          <p>BPE supports both <strong style="color:var(--banana)">block-based</strong> and <strong style="color:var(--banana)">text-based</strong> editing. Switch freely between them.</p>
+        </div>
+
+        <div class="doc-page" id="doc-bcode-basics">
+          <h1>📝 BCode Basics</h1>
+          <p class="doc-subtitle">The BCode scripting language</p>
+          <p>Every BCode script follows this structure:</p>
+          <pre>script.start
+
+attach "Banana Project Editor";
+attach "ModuleName";
+
+var variableName = value;
+
+event:onStart()
+    engine.log("Hello from BCode!");
+event.end
+
+script.end</pre>
+          <h2>📌 Core Syntax</h2>
+          <div class="table-wrap">
+            <table>
+              <tr><th>Syntax</th><th>Purpose</th></tr>
+              <tr><td><code>script.start</code> / <code>script.end</code></td><td>Required delimiters for every script.</td></tr>
+              <tr><td><code>attach "Module"</code></td><td>Import a module or dependency.</td></tr>
+              <tr><td><code>var name = value</code></td><td>Declare a variable.</td></tr>
+              <tr><td><code>event:name()</code> / <code>event.end</code></td><td>Event handler block.</td></tr>
+              <tr><td><code>object.event:Name()</code></td><td>Object-specific event.</td></tr>
+              <tr><td><code>// comment</code></td><td>Single-line comment.</td></tr>
+              <tr><td><code>..</code></td><td>String concatenation (Lua-style).</td></tr>
+            </table>
+          </div>
+          <div class="info-box">💡 BCode transpiles to Lua at runtime — Lua concepts like <code>..</code> concatenation carry over directly.</div>
+        </div>
+
+        <div class="doc-page" id="doc-bcode-variables">
+          <h1>📦 Variables</h1>
+          <p class="doc-subtitle">Storing and using data in BCode</p>
+          <p>Declare variables with <code>var</code>:</p>
+          <pre>var score = 0;
+var playerName = "Banana";
+var isAlive = true;</pre>
+          <h2>✏️ Modifying Variables</h2>
+          <p>No need to re-use <code>var</code> when updating — just assign directly:</p>
+          <pre>score = score + 1;
+window.SetTitle("Score: " .. score);</pre>
+          <div class="info-box">🍌 Variables declared outside events are script-global. Variables inside events are local to that event.</div>
+        </div>
+
+        <div class="doc-page" id="doc-bcode-events">
+          <h1>⚡ Events</h1>
+          <p class="doc-subtitle">Reacting to things that happen in your game</p>
+          <pre>event:onStart()
+    engine.log("Game started!");
+event.end
+
+object.event:OnClick()
+    score = score + 1;
+    window.SetTitle("Score: " .. score);
+event.end</pre>
+          <h2>📋 Common Events</h2>
+          <div class="table-wrap">
+            <table>
+              <tr><th>Event</th><th>When it fires</th></tr>
+              <tr><td><code>event:onStart()</code></td><td>When the game/script starts.</td></tr>
+              <tr><td><code>object.event:OnClick()</code></td><td>When the player clicks an object.</td></tr>
+              <tr><td><code>object.event:OnHover()</code></td><td>When the player hovers over an object.</td></tr>
+              <tr><td><code>event:onUpdate()</code></td><td>Every frame — use for game loop logic.</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="doc-page" id="doc-bcode-api">
+          <h1>🔧 Engine API</h1>
+          <p class="doc-subtitle">Built-in functions for interacting with BPE</p>
+          <h2>engine.*</h2>
+          <div class="table-wrap">
+            <table>
+              <tr><th>Function</th><th>Description</th></tr>
+              <tr><td><code>engine.log("msg")</code></td><td>Print to the BPE console.</td></tr>
+              <tr><td><code>engine.wait(seconds)</code></td><td>Pause execution.</td></tr>
+              <tr><td><code>engine.stop()</code></td><td>Stop the running game.</td></tr>
+            </table>
+          </div>
+          <h2>window.*</h2>
+          <div class="table-wrap">
+            <table>
+              <tr><th>Function</th><th>Description</th></tr>
+              <tr><td><code>window.SetTitle("text")</code></td><td>Set the window title bar.</td></tr>
+              <tr><td><code>window.SetSize(w, h)</code></td><td>Resize the game window.</td></tr>
+            </table>
+          </div>
+          <h2>💡 Full Example</h2>
+          <pre>script.start
+
+attach "Banana Project Editor";
+
+var score = 0;
+
+event:onStart()
+    engine.log("Clicker started!");
+    window.SetTitle("Clicker — Score: 0");
+event.end
+
+object.event:OnClick()
+    score = score + 1;
+    window.SetTitle("Clicker — Score: " .. score);
+event.end
+
+script.end</pre>
+        </div>
+
+        <div class="doc-page" id="doc-ai-overview">
+          <h1>🤖 BananaAI Overview</h1>
+          <p class="doc-subtitle">Your AI coding assistant</p>
+          <p>BananaAI is built directly into BPE. It can help you write BCode, debug problems, explain concepts, and create/edit project files in Agent mode. It runs on locally-hosted AI through Ollama with a token-based system.</p>
+          <div class="info-box">😴 BananaAI enters Sleep Mode from <strong>8:30 PM to 5:20 AM CST</strong> daily. Check the <span style="cursor:pointer" onclick="navigate('status')">status page</span> for availability.</div>
+        </div>
+
+        <div class="doc-page" id="doc-ai-modes">
+          <h1>🎛️ Modes & Tokens</h1>
+          <p class="doc-subtitle">How BananaAI usage works</p>
+          <h2>💬 Ask Mode</h2>
+          <p>For questions, explanations, and planning. Uses <strong style="color:var(--banana)">Generative Tokens</strong>.</p>
+          <h2>🔧 Agent Mode</h2>
+          <p>Have BananaAI create and edit scripts in your project. Uses <strong style="color:var(--banana)">Creation Tokens</strong>.</p>
+          <h2>🎫 Plans</h2>
+          <div class="table-wrap">
+            <table>
+              <tr><th>Plan</th><th>Price</th><th>Generative</th><th>Creation</th></tr>
+              <tr><td><strong style="color:var(--banana)">Free</strong></td><td>$0</td><td>5,000</td><td>2,500</td></tr>
+              <tr><td><strong style="color:var(--banana)">Prem</strong></td><td>$6.99/mo</td><td>10,000</td><td>5,000</td></tr>
+              <tr><td><strong style="color:var(--banana)">Banana</strong></td><td>$11.99/mo</td><td>20,000</td><td>10,000</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="doc-page" id="doc-ai-commands">
+          <h1>⚙️ Agent Commands</h1>
+          <p class="doc-subtitle">How BananaAI interacts with your project</p>
+          <p>In Agent mode, BananaAI generates <code>bai/</code> commands that BPE executes automatically:</p>
+          <div class="table-wrap">
+            <table>
+              <tr><th>Command</th><th>What it does</th></tr>
+              <tr><td><code>bai/createscript("name")</code></td><td>Creates a new script in your project.</td></tr>
+              <tr><td><code>bai/editscript("name")</code></td><td>Edits an existing script.</td></tr>
+              <tr><td><code>bai/readscript("name")</code></td><td>Reads a script for context.</td></tr>
+              <tr><td><code>bai/deletescript("name")</code></td><td>Deletes a script (confirms first).</td></tr>
+              <tr><td><code>bai/runscript("name")</code></td><td>Runs a script for testing.</td></tr>
+            </table>
+          </div>
+          <div class="info-box">⚠️ Commands that modify or delete scripts will prompt for confirmation in BPE before executing.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════ DOWNLOAD PAGE ══════════════ -->
+    <div class="page" id="page-download">
+      <div class="page-hero">
+        <span class="hero-icon">📥</span>
+        <h1>Download BPE</h1>
+        <p class="hero-sub">Banana Project Editor</p>
+        <span class="hero-badge">🪟 Windows · Java Required</span>
+      </div>
+
+      <div class="content-wrap">
+        <div class="dl-card featured">
+          <div class="dl-card-top">
+            <div>
+              <h2>Banana Project Editor</h2>
+              <span class="version-tag">Latest Release</span>
+              <p>The full BPE package with the editor, BCode engine, and BananaAI. Download both files, place them in the same folder, and run the build script.</p>
+            </div>
+            <div class="dl-actions">
+              <a class="dl-btn primary"
+                 href="https://github.com/Banana-Toast-GH/BananaProjectEditor/raw/main/BananaProjectEditor.zip"
+                 download="BananaProjectEditor.zip">
+                ⬇ Download ZIP
+              </a>
+              <a class="dl-btn secondary"
+                 href="https://github.com/Banana-Toast-GH/BananaProjectEditor/raw/main/BuildBPE.bat"
+                 download="BuildBPE.bat">
+                🔧 Build Script (.bat)
+              </a>
+              <span class="dl-size">GitHub · Banana-Toast-GH/BananaProjectEditor</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">💻 System Requirements</div>
+        <div class="req-grid">
+          <div class="req-card"><div class="req-icon">🪟</div><div class="req-label">OS</div><div class="req-val">Windows</div></div>
+          <div class="req-card"><div class="req-icon">☕</div><div class="req-label">Java</div><div class="req-val">JDK 11+</div></div>
+          <div class="req-card"><div class="req-icon">💾</div><div class="req-label">RAM</div><div class="req-val">512MB min</div></div>
+          <div class="req-card"><div class="req-icon">💿</div><div class="req-label">Disk</div><div class="req-val">~100MB</div></div>
+        </div>
+
+        <div class="section-title">🚀 How to Install</div>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div><h3>Download both files</h3><p>Grab BananaProjectEditor.zip and BuildBPE.bat from above. Place them in the same folder.</p></div></div>
+          <div class="step"><div class="step-num">2</div><div><h3>Run BuildBPE.bat</h3><p>Double-click it. Extracts and builds BPE to <code>C:\BPE\</code> automatically.</p></div></div>
+          <div class="step"><div class="step-num">3</div><div><h3>Launch BPE</h3><p><code>java -jar C:\BPE\BananaProjectEditor\BananaProjectEditor.jar</code></p></div></div>
+          <div class="step"><div class="step-num">4</div><div><h3>No Java?</h3><p>Download from <strong style="color:var(--banana)">java.com</strong> first. JDK 11 or newer required.</p></div></div>
+        </div>
+
+        <div class="dl-card">
+          <div class="dl-card-top">
+            <div>
+              <h2>🗄️ Older Versions</h2>
+              <p>Some legacy versions are available in the archive. Certain very old versions may be locked if marked non-functional.</p>
+            </div>
+            <div class="dl-actions">
+              <a class="dl-btn secondary" href="https://www.bpe.com/bpe/archive">Browse Archive →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-footer">
+        <span>🍌 Banana Project Editor</span> &nbsp;·&nbsp; Download
+        <div class="footer-links">
+          <a onclick="navigate('docs')">Documentation</a>
+          <a onclick="navigate('status')">Status</a>
+          <a onclick="navigate('tos')">ToS</a>
+          <a href="https://github.com/Banana-Toast-GH/BananaProjectEditor" target="_blank">GitHub</a>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+  /* ═══════════════════════════════════════
+     NAVIGATION
+  ═══════════════════════════════════════ */
+  const PAGE_TITLES = {
+    status: 'Status', tos: 'Terms of Service',
+    chat: 'Web Chat', docs: 'Documentation', download: 'Download'
+  };
+
+  let currentPage = 'status';
+  let sidebarOpen = true;
+
+  function navigate(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+
+    document.getElementById('page-' + page).classList.add('active');
+    const navItem = document.getElementById('nav-' + page);
+    if (navItem) navItem.classList.add('active');
+
+    document.getElementById('navPageTitle').textContent = PAGE_TITLES[page] || '';
+
+    // Show/hide token pill on chat page
+    document.getElementById('tokenPill').style.display = page === 'chat' ? 'flex' : 'none';
+
+    currentPage = page;
+
+    // Scroll to top
+    document.getElementById('main').scrollTop = 0;
+  }
+
+  function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    sidebarOpen = !sidebarOpen;
+    sb.classList.toggle('collapsed', !sidebarOpen);
+  }
+
+  /* ═══════════════════════════════════════
+     SLEEP MODE
+  ═══════════════════════════════════════ */
+  function isSleeping() {
+    const cst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    const t = cst.getHours() * 60 + cst.getMinutes();
+    return t >= 20 * 60 + 30 || t < 5 * 60 + 20;
+  }
+
+  function sleepTimeRemaining() {
+    const cst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    const t = cst.getHours() * 60 + cst.getMinutes();
+    const wake = 5 * 60 + 20;
+    const mins = t >= 20 * 60 + 30 ? (24 * 60 - t) + wake : wake - t;
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  function applySleep() {
+    const sleeping = isSleeping();
+    const pill = document.getElementById('sleepPill');
+    pill.style.display = sleeping ? 'flex' : 'none';
+    document.getElementById('sleepPillText').textContent = `Wakes in ${sleepTimeRemaining()}`;
+
+    // Chat page
+    document.getElementById('chatSleepBar').style.display = sleeping ? 'block' : 'none';
+    const ci = document.getElementById('chatInput');
+    const sb = document.getElementById('sendBtn');
+    if (ci) { ci.disabled = sleeping; ci.placeholder = sleeping ? '😴 BananaAI is sleeping... back at 5:20 AM CST' : 'Ask BananaAI about BCode or BPE...'; }
+    if (sb && sleeping) sb.disabled = true;
+  }
+
+  /* ═══════════════════════════════════════
+     STATUS PAGE
+  ═══════════════════════════════════════ */
+  const API = 'http://10.0.0.244:5000';
+  const STATUS_ENDPOINTS = [
+    { method: 'GET', path: '/api/health', label: 'Health Check' },
+    { method: 'GET', path: '/api/models', label: 'Models List' },
+  ];
+
+  let history30    = JSON.parse(localStorage.getItem('bpeHistory')    || '[]');
+  let incidents    = JSON.parse(localStorage.getItem('bpeIncidents')  || '[]');
+  let serverStart  = localStorage.getItem('bpeStart') || null;
+  let countdownVal = 30;
+  let countdownTimer = null;
+
+  function now()     { return new Date().toLocaleTimeString(); }
+  function nowFull() { return new Date().toLocaleString(); }
+
+  function formatUptime(ms) {
+    const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+    if (d > 0) return `${d}d ${h % 24}h`;
+    if (h > 0) return `${h}h ${m % 60}m`;
+    if (m > 0) return `${m}m ${s % 60}s`;
+    return `${s}s`;
+  }
+
+  function renderHistory() {
+    const el = document.getElementById('historyBars');
+    if (!el) return;
+    el.innerHTML = '';
+    const padded = [...Array(Math.max(0, 30 - history30.length)).fill('unknown'), ...history30.slice(-30)];
+    padded.forEach(st => {
+      const b = document.createElement('div');
+      b.className = `history-bar ${st}`;
+      b.style.height = ({up:'100%',sleeping:'50%',partial:'60%',down:'25%',unknown:'15%'})[st] || '15%';
+      b.title = ({up:'✅ Online',sleeping:'😴 Sleeping',partial:'⚠️ Degraded',down:'❌ Down',unknown:'❔ Unknown'})[st] || '—';
+      el.appendChild(b);
+    });
+    const upCount = history30.filter(s => s === 'up').length;
+    const rel     = history30.filter(s => s !== 'unknown' && s !== 'sleeping').length;
+    const pct     = rel > 0 ? Math.round((upCount / rel) * 100) : 0;
+    const sleepN  = history30.filter(s => s === 'sleeping').length;
+    document.getElementById('uptimePct').textContent = `${pct}% uptime${sleepN > 0 ? ` · ${sleepN} sleeping` : ''}`;
+  }
+
+  function renderEndpoints(results) {
+    const el = document.getElementById('endpointsList');
+    if (!el) return;
+    el.innerHTML = '';
+    results.forEach(r => {
+      el.innerHTML += `
+        <div class="endpoint-row">
+          <div style="display:flex;align-items:center">
+            <span class="ep-method ${r.method.toLowerCase()}">${r.method}</span>
+            <span class="ep-path">${r.path}</span>
+          </div>
+          <div style="display:flex;align-items:center">
+            <span class="ep-latency">${r.latency != null ? r.latency + 'ms' : '—'}</span>
+            <span class="ep-status ${r.ok ? 'ok' : 'error'}">${r.ok ? 'OK' : 'ERROR'}</span>
+          </div>
+        </div>`;
+    });
+  }
+
+  function renderIncidents() {
+    const el = document.getElementById('incidentLog');
+    if (!el) return;
+    if (incidents.length === 0) {
+      el.innerHTML = `<div class="incident-item"><div class="inc-dot green" style="margin-top:5px"></div><div><div class="incident-title">No incidents recorded yet.</div><div class="incident-time">—</div></div></div>`;
+      return;
+    }
+    el.innerHTML = incidents.slice(-8).reverse().map(i =>
+      `<div class="incident-item"><div class="inc-dot ${i.color}" style="margin-top:5px"></div><div><div class="incident-title">${i.title}</div><div class="incident-time">${i.time}</div></div></div>`
+    ).join('');
+  }
+
+  function addIncident(title, color) {
+    incidents.push({ title, color, time: nowFull() });
+    if (incidents.length > 50) incidents = incidents.slice(-50);
+    localStorage.setItem('bpeIncidents', JSON.stringify(incidents));
+    renderIncidents();
+  }
+
+  async function pingEndpoint(ep) {
+    const t0 = performance.now();
+    try {
+      const res = await fetch(API + ep.path, { method: ep.method, signal: AbortSignal.timeout(5000) });
+      return { ...ep, ok: res.ok, latency: Math.round(performance.now() - t0) };
+    } catch {
+      return { ...ep, ok: false, latency: null };
+    }
+  }
+
+  async function doRefresh() {
+    const btn = document.getElementById('refreshBtn');
+    if (btn) btn.classList.add('spinning');
+    const badge = document.getElementById('mainBadge');
+    const badgeText = document.getElementById('mainBadgeText');
+    if (badge) badge.className = 'status-badge checking';
+    if (badgeText) badgeText.textContent = 'Checking...';
+
+    const sleeping = isSleeping();
+    let results = [], serverOnline = false;
+
+    if (!sleeping) {
+      results = await Promise.all(STATUS_ENDPOINTS.map(pingEndpoint));
+      const hr = results.find(r => r.path === '/api/health');
+      serverOnline = hr?.ok ?? false;
+    }
+
+    const healthResult = results.find(r => r.path === '/api/health');
+    const prevStatus = history30[history30.length - 1];
+    const newStatus  = sleeping ? 'sleeping' : serverOnline ? 'up' : 'down';
+
+    history30.push(newStatus);
+    if (history30.length > 30) history30 = history30.slice(-30);
+    localStorage.setItem('bpeHistory', JSON.stringify(history30));
+
+    if (prevStatus !== undefined && prevStatus !== newStatus) {
+      if (newStatus === 'down')                            addIncident('🔴 Server went offline', 'red');
+      if (newStatus === 'up')                              addIncident('🟢 Server came back online', 'green');
+      if (newStatus === 'sleeping')                        addIncident('😴 Server entered sleep mode', 'banana');
+      if (prevStatus === 'sleeping' && newStatus === 'up') addIncident('☀️ Server woke up from sleep', 'green');
+    } else if (prevStatus === undefined) {
+      addIncident(sleeping ? '😴 First check — sleeping' : serverOnline ? '🟢 First check — online' : '🔴 First check — offline', sleeping ? 'banana' : serverOnline ? 'green' : 'red');
+    }
+
+    if (badge && badgeText) {
+      if (sleeping) {
+        badge.className = 'status-badge sleeping';
+        badgeText.textContent = `😴 Sleeping — Wakes in ${sleepTimeRemaining()}`;
+      } else if (serverOnline) {
+        badge.className = 'status-badge online';
+        badgeText.textContent = 'All Systems Operational';
+      } else {
+        badge.className = 'status-badge offline';
+        badgeText.textContent = 'Server Offline';
+      }
+    }
+
+    const sleepBannerEl = document.getElementById('sleepBannerStatus');
+    if (sleepBannerEl) sleepBannerEl.style.display = sleeping ? 'block' : 'none';
+
+    const uptimeValEl = document.getElementById('uptimeVal');
+    const uptimeSubEl = document.getElementById('uptimeSub');
+    if (sleeping) {
+      if (uptimeValEl) uptimeValEl.textContent = 'Sleeping';
+      if (uptimeSubEl) uptimeSubEl.textContent = 'Resumes at 5:20 AM CST';
+    } else if (serverOnline) {
+      if (!serverStart) { serverStart = Date.now().toString(); localStorage.setItem('bpeStart', serverStart); }
+      if (uptimeValEl) uptimeValEl.textContent = formatUptime(Date.now() - parseInt(serverStart));
+      if (uptimeSubEl) uptimeSubEl.textContent = `Since ${new Date(parseInt(serverStart)).toLocaleString()}`;
+    } else {
+      serverStart = null; localStorage.removeItem('bpeStart');
+      if (uptimeValEl) uptimeValEl.textContent = 'Offline';
+      if (uptimeSubEl) uptimeSubEl.textContent = 'Server not reachable';
+    }
+
+    const pingEl = document.getElementById('pingVal');
+    if (pingEl) pingEl.textContent = healthResult?.latency != null ? healthResult.latency + 'ms' : '—';
+
+    const lcEl = document.getElementById('lastChecked');
+    if (lcEl) lcEl.textContent = `Last checked: ${now()}`;
+
+    renderHistory();
+    if (!sleeping) renderEndpoints(results);
+    renderIncidents();
+
+    if (btn) btn.classList.remove('spinning');
+    clearInterval(countdownTimer);
+    startCountdown();
+  }
+
+  window.refresh = function() { doRefresh(); };
+
+  function startCountdown() {
+    countdownVal = 30;
+    const el = document.getElementById('countdown');
+    if (el) el.textContent = `Auto-refresh in ${countdownVal}s`;
+    countdownTimer = setInterval(() => {
+      countdownVal--;
+      if (el) el.textContent = `Auto-refresh in ${countdownVal}s`;
+      if (countdownVal <= 0) { clearInterval(countdownTimer); doRefresh(); }
+    }, 1000);
+  }
+
+  /* ═══════════════════════════════════════
+     DOCS PAGE
+  ═══════════════════════════════════════ */
+  function showDoc(id, el) {
+    document.querySelectorAll('.doc-page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.docs-link').forEach(l => l.classList.remove('active'));
+    const docEl = document.getElementById('doc-' + id);
+    if (docEl) docEl.classList.add('active');
+    if (el) el.classList.add('active');
+    document.querySelector('.docs-content').scrollTop = 0;
+  }
+
+  /* ═══════════════════════════════════════
+     CHAT PAGE
+  ═══════════════════════════════════════ */
+  const CHAT_API    = 'http://10.0.0.244:5000';
+  const MAX_TOKENS  = 1000;
+  const CHAT_USER   = 'webchat_' + Math.random().toString(36).slice(2, 9);
+
+  let tokensLeft  = MAX_TOKENS;
+  let chatSession = null;
+  let chatBusy    = false;
+
+  function updateTokenDisplay() {
+    document.getElementById('tokenDisplay').textContent = tokensLeft.toLocaleString();
+    document.getElementById('tokenBarLabel').textContent = `${tokensLeft} / ${MAX_TOKENS}`;
+    document.getElementById('tokenBarFill').style.width = Math.max(0, tokensLeft / MAX_TOKENS * 100) + '%';
+    if (tokensLeft <= 0) {
+      document.getElementById('sendBtn').disabled = true;
+      document.getElementById('chatInput').disabled = true;
+      document.getElementById('chatInput').placeholder = '🚫 No tokens left for this session.';
+    }
+  }
+
+  function addChatMsg(role, text, meta) {
+    const welcome = document.getElementById('chatWelcome');
+    if (welcome) welcome.remove();
+    const msgs = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    div.innerHTML = `
+      <div class="msg-avatar">${role === 'user' ? '👤' : '🍌'}</div>
+      <div class="msg-body">
+        <div class="msg-bubble">${fmtText(text)}</div>
+        ${meta ? `<div class="msg-meta">${meta}</div>` : ''}
+      </div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function fmtText(t) {
+    t = t.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return t;
+  }
+
+  function showTypingIndicator() {
+    const msgs = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'typing-wrap'; div.id = 'typingMsg';
+    div.innerHTML = `<div class="msg-avatar" style="width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">🍌</div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function hideTypingIndicator() {
+    const t = document.getElementById('typingMsg');
+    if (t) t.remove();
+  }
+
+  window.sendMessage = async function() {
+    if (isSleeping() || tokensLeft <= 0 || chatBusy) return;
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = ''; input.style.height = 'auto';
+    addChatMsg('user', text, new Date().toLocaleTimeString());
+    chatBusy = true;
+    document.getElementById('sendBtn').disabled = true;
+    showTypingIndicator();
+    try {
+      const res = await fetch(`${CHAT_API}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: CHAT_USER, message: text, mode: 'ask', session_id: chatSession })
+      });
+      hideTypingIndicator();
+      if (!res.ok) {
+        const err = await res.json();
+        addChatMsg('ai', `⚠️ Error: ${err.error || 'Something went wrong.'}`, '');
+      } else {
+        const data = await res.json();
+        chatSession = data.session_id;
+        const used = data.tokens_used?.generative || data.tokens_used?.breakdown?.total || 0;
+        tokensLeft = Math.max(0, tokensLeft - used);
+        updateTokenDisplay();
+        const gen = data.generation_time ? `${data.generation_time.toFixed(1)}s · ${used} tokens` : '';
+        addChatMsg('ai', data.response, gen);
+      }
+    } catch(e) {
+      hideTypingIndicator();
+      addChatMsg('ai', `⚠️ Can't reach BananaAI server.\n\`${e.message}\``, '');
+    }
+    chatBusy = false;
+    if (!isSleeping() && tokensLeft > 0) document.getElementById('sendBtn').disabled = false;
+  };
+
+  window.sendChip = function(el) {
+    document.getElementById('chatInput').value = el.textContent;
+    sendMessage();
+  };
+
+  document.getElementById('chatInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+  });
+
+  document.getElementById('chatInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  /* ═══════════════════════════════════════
+     INIT
+  ═══════════════════════════════════════ */
+  applySleep();
+  updateTokenDisplay();
+  renderHistory();
+  renderIncidents();
+  doRefresh();
+  setInterval(applySleep, 60000);
+</script>
+</body>
+</html>
